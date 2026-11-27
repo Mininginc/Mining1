@@ -1,0 +1,6 @@
+,,DO NOT FILTER FIRST ROW!!!,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,Car ID,Year,Model,M-Sport,Body Style,Color,Engine,Title,Transmission,VIN,Mileage,Bought on,Delievered on,Dismantled on,Started Posted,Paid off on,Delivered after Bought (days),Dismantled after delivered (Days),Paid after Dismantle (Days),Posted after Dismantle (Days),Paid off in (Days),Number of parts available,Number of parts available,ДОЛЯ размещенных,Number of parts sold,ДОЛЯ проданных,Car Cost,Profit,Total sales,На e-bay в USD,На e-bay в USD <=30дней,На e-bay в USD <=90дней,На e-bay в USD =>90дней,,Average,,,,Расчетная маржитальность,Расчетная маржитальность,Daily Profit Calculation
+FALSE,9001,2011,335i,TRUE,E92,Black 475,N55,TRUE,AT,WBAKG7C51BE598669,98,3/4/2024,3/9/2024,3/20/2024,3/22/2024,6/1/2024,,,,,,,,,,,"4,500.00","4,600.50","9,100.50",,,,,,,,,,,,
+FALSE,9002,2015,M4,TRUE,F82,,,FALSE,DCT,WBS3R9C51FK000000,,11/15/2025,,,,,,,,,,,,,,,"12,000.00",,,,,,,,,,,,,,
+TRUE,9001,2011,335i,,,,,,,WBAKG7C51BE598669,,1/1/2025,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,Scrap Metal,,,,,,,,,,,,,,,,,,,,,,,,,,,,"1,200.00",,,,,,,,,,,,
