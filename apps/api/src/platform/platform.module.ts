@@ -11,6 +11,8 @@ import { AuthController } from './auth/auth.controller.js';
 import { AuthGuard } from './auth/auth.guard.js';
 import { AuthService } from './auth/auth.service.js';
 import { HealthController } from './health/health.controller.js';
+import { ImportRunsService } from './imports/import-runs.service.js';
+import { ImportsController } from './imports/imports.controller.js';
 import { OutboxService } from './outbox/outbox.service.js';
 import { UsersController } from './users/users.controller.js';
 import { UsersService } from './users/users.service.js';
@@ -25,7 +27,7 @@ export class PlatformModule implements OnApplicationShutdown {
       module: PlatformModule,
       global: true,
       imports: [JwtModule.register({ secret: config.JWT_SECRET, signOptions: { expiresIn: config.JWT_TTL_SECONDS } })],
-      controllers: [HealthController, AuthController, UsersController, AuditController],
+      controllers: [HealthController, AuthController, UsersController, AuditController, ImportsController],
       providers: [
         { provide: CONFIG, useValue: config },
         { provide: DB, useFactory: () => createDb(config.DATABASE_URL) },
@@ -34,8 +36,9 @@ export class PlatformModule implements OnApplicationShutdown {
         OutboxService,
         AuthService,
         UsersService,
+        ImportRunsService,
       ],
-      exports: [DB, AuditService, OutboxService],
+      exports: [DB, AuditService, OutboxService, ImportRunsService],
     };
   }
 

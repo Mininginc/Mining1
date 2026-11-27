@@ -1,5 +1,8 @@
 import { Kysely, PostgresDialect } from 'kysely';
-import { Pool } from 'pg';
+import pg, { Pool } from 'pg';
+
+// Return SQL `date` columns as 'YYYY-MM-DD' strings, not JS Dates, so no time zone can shift a day.
+pg.types.setTypeParser(1082, (v: string) => v);
 import type { Database } from './types.js';
 
 export const DB = Symbol('DB');
