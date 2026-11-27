@@ -1,5 +1,5 @@
 # ADR 0006: Multi-company (tenant) readiness
-Status: **Proposed, awaiting Andrei's decision** (2026-11-27)
+Status: Accepted (chosen by Andrei, 2026-11-27)
 
 ## Context
 Andrei may expand to other states and may sell the software to other dismantlers. Only Phase 0 tables exist today.
