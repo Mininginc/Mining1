@@ -9,10 +9,11 @@ You are Design verification for the dismantler operations platform. You check th
 ## Check every PR for
 1. **Spec fidelity:** each numbered acceptance criterion is implemented, nothing outside scope was added, data changes match the spec exactly (names, types, statuses).
 2. **Module borders:** no reads or writes to another module's schema; cross-module calls go through public services or outbox events; outside services only through integration adapters.
-3. **Fixed decisions and ADRs:** stack, master keys (vehicle stock number, part SKU), audit logging on every write, role-based access on every endpoint.
-4. **Yard and warehouse usability** when the spec says the screen is used there: offline queue, scan input, camera capture, touch targets.
-5. **Compliance angle** named in the spec (DMV, NMVTIS, OSHA, EPA, sales tax) is actually handled.
-6. **Security basics:** input validation, authorization checks, no secrets, no sensitive data in logs.
+3. **Company isolation (ADR 0006):** new tables have `company_id` and `protectTable()` in their migration; no business query runs outside `withCompany()`; the company comes from the token, never from the request body.
+4. **Fixed decisions and ADRs:** stack, master keys (vehicle stock number, part SKU), audit logging on every write, role-based access on every endpoint.
+5. **Yard and warehouse usability** when the spec says the screen is used there: offline queue, scan input, camera capture, touch targets.
+6. **Compliance angle** named in the spec (DMV, NMVTIS, OSHA, EPA, sales tax) is actually handled.
+7. **Security basics:** input validation, authorization checks, no secrets, no sensitive data in logs.
 
 ## Output
 Write `docs/verification/<pr-or-feature>.md` with a table: criterion or rule, PASS or FAIL, evidence (file and line), and the fix needed. End with one verdict:

@@ -13,9 +13,11 @@ docker compose up -d db          # or a local PostgreSQL 16 with user/password w
 cp .env.example .env             # then edit secrets
 pnpm install && pnpm build
 set -a; . ./.env; set +a
-pnpm db:migrate && pnpm db:seed
+pnpm db:migrate                  # creates the wms_app role (no login)
+psql "$OWNER_DATABASE_URL" -c "alter role wms_app login password 'change-me'"
+pnpm db:seed                     # creates COMPANY_SLUG and its first admin
 pnpm dev:api                     # API on :3000
 pnpm dev:web                     # app on :5173
 ```
 
-Status: Phase 0 (foundation). Sign-in, roles, MFA, audit log, outbox, PWA shell, backups.
+Status: Phase 0 done; multi-company (spec 0.1) built. Every table carries company_id with PostgreSQL row-level security.

@@ -1,6 +1,13 @@
 import type { PublicUser } from '@wms/shared';
 
 const TOKEN_KEY = 'wms.token';
+const COMPANY_KEY = 'wms.company';
+
+/** The company code is remembered on this device so staff type it once. */
+export const companyStore = {
+  get: () => localStorage.getItem(COMPANY_KEY) ?? '',
+  set: (c: string) => localStorage.setItem(COMPANY_KEY, c),
+};
 
 export class ApiError extends Error {
   constructor(
@@ -34,10 +41,10 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  login: (email: string, password: string, totp?: string) =>
+  login: (company: string, email: string, password: string, totp?: string) =>
     call<{ accessToken: string; user: PublicUser }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password, ...(totp ? { totp } : {}) }),
+      body: JSON.stringify({ ...(company ? { company } : {}), email, password, ...(totp ? { totp } : {}) }),
     }),
   me: () => call<PublicUser>('/auth/me'),
 };

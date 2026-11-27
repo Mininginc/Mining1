@@ -13,6 +13,7 @@ You are the Architect for the dismantler operations platform: one system that ru
 - Commodity back office is integrated, not rebuilt: payroll, general ledger, sales tax, card payments, shipping labels, marketplaces, VIN decode, NMVTIS, parts interchange data. All outside calls go through the integrations hub in M1.
 - Modules never write another module's tables. They call public module APIs or react to events published through a transactional outbox.
 - Every change is audit-logged (user, time, before/after).
+- Multi-company (ADR 0006): every business table has `company_id`, row-level security enabled and forced via `protectTable()`, and is accessed only through `withCompany()`. Every spec lists `company_id` on its tables. State-specific rules are settings per company location.
 - Importance scores: 5 = most important. Phases follow importance adjusted for dependency.
 
 ## What you produce

@@ -5,6 +5,8 @@ const schema = z.object({
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   JWT_TTL_SECONDS: z.coerce.number().int().positive().default(900),
   PORT: z.coerce.number().int().positive().default(3000),
+  /** Used when the sign-in form sends no company (single-company installs). */
+  DEFAULT_COMPANY_SLUG: z.string().min(2).max(49).optional(),
 });
 
 export type AppConfig = z.infer<typeof schema>;

@@ -3,10 +3,10 @@ import type { Kysely } from 'kysely';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '../src/db/types.js';
-import { seedFirstAdmin } from '../src/db/seed.js';
+import { seedCompany } from '../src/db/seed.js';
 import { migrateToLatest } from '../src/db/migrate.js';
 import { totp } from '../src/platform/crypto/totp.js';
-import { ADMIN, resetDatabase, startApp } from './helpers.js';
+import { ADMIN, COMPANY, resetDatabase, startApp } from './helpers.js';
 
 let app: INestApplication;
 let db: Kysely<Database>;
@@ -47,13 +47,16 @@ describe('AC1-2 health and migrations', () => {
 });
 
 describe('AC3 seed', () => {
-  it('does not create a second admin', async () => {
-    expect(await seedFirstAdmin(db, { email: 'other@test.local', password: 'another-password-1', name: 'X' })).toBe(false);
+  it('does not create a second admin in the same company', async () => {
+    expect(await seedCompany(db, { company: COMPANY, admin: { email: 'other@test.local', password: 'another-password-1', name: 'X' } })).toEqual({
+      companyCreated: false,
+      adminCreated: false,
+    });
     const admins = await db.selectFrom('platform.users').select('email').execute();
     expect(admins.map((a) => a.email)).toEqual([ADMIN.email]);
   });
   it('rejects a short admin password', async () => {
-    await expect(seedFirstAdmin(db, { email: 'x@test.local', password: 'short', name: 'X' })).rejects.toThrow(/at least 12/);
+    await expect(seedCompany(db, { company: COMPANY, admin: { email: 'x@test.local', password: 'short', name: 'X' } })).rejects.toThrow(/at least 12/);
   });
 });
 
