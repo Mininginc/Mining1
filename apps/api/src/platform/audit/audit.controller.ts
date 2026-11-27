@@ -1,4 +1,5 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Req } from '@nestjs/common';
+import type { AuthedRequest } from '../../common/request-context.js';
 import { z } from 'zod';
 import { Roles } from '../auth/decorators.js';
 import { ZodPipe } from '../../common/zod-pipe.js';
@@ -16,7 +17,7 @@ export class AuditController {
 
   @Get()
   @Roles('admin', 'manager')
-  list(@Query(new ZodPipe(query)) q: z.infer<typeof query>) {
-    return this.audit.list(q);
+  list(@Req() req: AuthedRequest, @Query(new ZodPipe(query)) q: z.infer<typeof query>) {
+    return this.audit.list(req.user!.companyId, q);
   }
 }

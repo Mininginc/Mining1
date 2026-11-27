@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Kysely, Transaction } from 'kysely';
+import type { Transaction } from 'kysely';
 import type { Database } from '../../db/types.js';
 
 /**
@@ -8,7 +8,7 @@ import type { Database } from '../../db/types.js';
  */
 @Injectable()
 export class OutboxService {
-  async publish(trx: Transaction<Database> | Kysely<Database>, topic: string, payload: unknown): Promise<void> {
+  async publish(trx: Transaction<Database>, topic: string, payload: unknown): Promise<void> {
     await trx.insertInto('platform.outbox').values({ topic, payload: JSON.stringify(payload), published_at: null }).execute();
   }
 }

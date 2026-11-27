@@ -2,6 +2,7 @@ import { ConflictException, Inject, Injectable, NotFoundException } from '@nestj
 import { sql, type Kysely } from 'kysely';
 import { isRole, type PublicUser, type Role } from '@wms/shared';
 import { DB } from '../../db/db.js';
+import { withCompany } from '../../db/tenant.js';
 import type { Database, UserRow } from '../../db/types.js';
 import type { ActorContext } from '../../common/request-context.js';
 import { AuditService } from '../audit/audit.service.js';
@@ -26,15 +27,15 @@ export class UsersService {
     private readonly outbox: OutboxService,
   ) {}
 
-  async list(): Promise<PublicUser[]> {
-    const rows = await this.db.selectFrom('platform.users').select(PUBLIC_COLUMNS).orderBy('name').execute();
+  async list(companyId: string): Promise<PublicUser[]> {
+    const rows = await withCompany(this.db, companyId, (trx) => trx.selectFrom('platform.users').select(PUBLIC_COLUMNS).orderBy('name').execute());
     return rows.map(toPublicUser);
   }
 
   async create(ctx: ActorContext, input: { email: string; name: string; password: string; roles: Role[] }): Promise<PublicUser> {
     const passwordHash = await hashPassword(input.password);
     try {
-      return await this.db.transaction().execute(async (trx) => {
+      return await withCompany(this.db, ctx.companyId, async (trx) => {
         const row = await trx
           .insertInto('platform.users')
           .values({ email: input.email.trim(), name: input.name, password_hash: passwordHash, roles: input.roles, mfa_secret: null, locked_until: null })
@@ -57,7 +58,7 @@ export class UsersService {
     patch: { name?: string; roles?: Role[]; active?: boolean; password?: string },
   ): Promise<PublicUser> {
     const passwordHash = patch.password ? await hashPassword(patch.password) : undefined;
-    return this.db.transaction().execute(async (trx) => {
+    return withCompany(this.db, ctx.companyId, async (trx) => {
       const beforeRow = await trx.selectFrom('platform.users').select(PUBLIC_COLUMNS).where('id', '=', id).forUpdate().executeTakeFirst();
       if (!beforeRow) throw new NotFoundException();
       const row = await trx

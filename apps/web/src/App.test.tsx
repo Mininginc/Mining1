@@ -29,6 +29,19 @@ describe('sign-in', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/auth/login', expect.objectContaining({ method: 'POST' }));
   });
 
+  it('sends the company code and remembers it on this device', async () => {
+    const fetchMock = vi.fn((_url: string, _init: RequestInit) => json(200, { accessToken: 'tok', user: shipper }));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<App />);
+    await userEvent.type(screen.getByLabelText('Company code'), 'Acme');
+    await userEvent.type(screen.getByLabelText('Email'), 's@x.co');
+    await userEvent.type(screen.getByLabelText('Password'), 'pw-pw-pw-pw-pw');
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    await screen.findByRole('navigation', { name: 'Modules' });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toMatchObject({ company: 'acme' });
+    expect(localStorage.getItem('wms.company')).toBe('acme');
+  });
+
   it('asks for an authenticator code when MFA is on', async () => {
     const fetchMock = vi
       .fn()

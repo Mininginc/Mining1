@@ -1,11 +1,12 @@
 import { Body, Controller, Get, HttpCode, Post, Req } from '@nestjs/common';
 import { z } from 'zod';
 import { ZodPipe } from '../../common/zod-pipe.js';
-import { actorFrom, type AuthedRequest } from '../../common/request-context.js';
+import { actorFrom, requestMeta, type AuthedRequest } from '../../common/request-context.js';
 import { Public } from './decorators.js';
 import { AuthService } from './auth.service.js';
 
 const login = z.object({
+  company: z.string().trim().max(49).optional(),
   email: z.string().trim().min(1).max(254),
   password: z.string().min(1).max(200),
   totp: z.string().regex(/^\d{6}$/).optional(),
@@ -20,12 +21,12 @@ export class AuthController {
   @Post('login')
   @HttpCode(200)
   login(@Req() req: AuthedRequest, @Body(new ZodPipe(login)) body: z.infer<typeof login>) {
-    return this.auth.login(actorFrom(req), body);
+    return this.auth.login(requestMeta(req), body);
   }
 
   @Get('me')
   me(@Req() req: AuthedRequest) {
-    return this.auth.me(req.user!.id);
+    return this.auth.me(req.user!.companyId, req.user!.id);
   }
 
   @Post('mfa/setup')

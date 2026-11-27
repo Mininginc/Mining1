@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Kysely, Transaction } from 'kysely';
 import { DB } from '../../db/db.js';
+import { withCompany } from '../../db/tenant.js';
 import type { Database } from '../../db/types.js';
 import type { ActorContext } from '../../common/request-context.js';
 
@@ -33,8 +34,11 @@ export function redact(value: unknown): unknown {
 export class AuditService {
   constructor(@Inject(DB) private readonly db: Kysely<Database>) {}
 
-  /** Write inside the caller's transaction so the change and its audit row commit together. */
-  async record(trx: Transaction<Database> | Kysely<Database>, ctx: ActorContext, entry: AuditEntry): Promise<void> {
+  /**
+   * Write inside the caller's company transaction (see withCompany) so the change and its audit row
+   * commit together. company_id comes from that transaction; RLS rejects any mismatch.
+   */
+  async record(trx: Transaction<Database>, ctx: Omit<ActorContext, 'companyId'>, entry: AuditEntry): Promise<void> {
     const before = redact(entry.before);
     const after = redact(entry.after);
     await trx
@@ -52,10 +56,12 @@ export class AuditService {
       .execute();
   }
 
-  async list(filter: { entityType?: string; entityId?: string; limit: number }) {
-    let q = this.db.selectFrom('platform.audit_log').selectAll().orderBy('id', 'desc').limit(filter.limit);
-    if (filter.entityType) q = q.where('entity_type', '=', filter.entityType);
-    if (filter.entityId) q = q.where('entity_id', '=', filter.entityId);
-    return q.execute();
+  async list(companyId: string, filter: { entityType?: string; entityId?: string; limit: number }) {
+    return withCompany(this.db, companyId, (trx) => {
+      let q = trx.selectFrom('platform.audit_log').selectAll().orderBy('id', 'desc').limit(filter.limit);
+      if (filter.entityType) q = q.where('entity_type', '=', filter.entityType);
+      if (filter.entityId) q = q.where('entity_id', '=', filter.entityId);
+      return q.execute();
+    });
   }
 }

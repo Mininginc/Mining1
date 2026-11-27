@@ -31,8 +31,8 @@ export class UsersController {
   constructor(private readonly users: UsersService) {}
 
   @Get()
-  list() {
-    return this.users.list();
+  list(@Req() req: AuthedRequest) {
+    return this.users.list(req.user!.companyId);
   }
 
   @Post()
