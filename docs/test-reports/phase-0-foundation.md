@@ -31,4 +31,4 @@ Duplicate email in a different case (409), unknown role (400), last-admin protec
 ## Not covered yet
 - Installing the PWA on a real phone and scanner: to do on site during Phase 1.
 - Playwright browser tests: start in Phase 1 with the first yard screens.
-- CI has not run on GitHub yet, because the code isn't pushed.
+- CI on GitHub: first run passed on 2026-11-27 (build, type check, tests, restore drill).
