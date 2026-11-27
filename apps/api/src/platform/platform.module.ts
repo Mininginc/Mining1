@@ -13,6 +13,7 @@ import { AuthService } from './auth/auth.service.js';
 import { HealthController } from './health/health.controller.js';
 import { ImportRunsService } from './imports/import-runs.service.js';
 import { ImportsController } from './imports/imports.controller.js';
+import { ExternalListingsService } from './integrations/external-listings.service.js';
 import { OutboxService } from './outbox/outbox.service.js';
 import { UsersController } from './users/users.controller.js';
 import { UsersService } from './users/users.service.js';
@@ -37,8 +38,9 @@ export class PlatformModule implements OnApplicationShutdown {
         AuthService,
         UsersService,
         ImportRunsService,
+        ExternalListingsService,
       ],
-      exports: [DB, AuditService, OutboxService, ImportRunsService],
+      exports: [DB, AuditService, OutboxService, ImportRunsService, ExternalListingsService],
     };
   }
 

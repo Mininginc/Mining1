@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import type { Transaction } from 'kysely';
-import type { Database, ExternalListingsTable } from '../../db/types.js';
+import type { Database } from '../../db/types.js';
 import type { ActorContext } from '../../common/request-context.js';
 import { readCsv } from '../../common/csv.js';
 import { cell, ebayDate, makeFromTitle, moneyToCents, parseSku } from '../../common/parse.js';
 import { AuditService } from '../../platform/audit/audit.service.js';
 import { OutboxService } from '../../platform/outbox/outbox.service.js';
+import { ExternalListingsService } from '../../platform/integrations/external-listings.service.js';
 import { ImportFileError, ImportRunsService, type Counts, type ImportIssue, type ImportResult } from '../../platform/imports/import-runs.service.js';
 import { IntakeService } from '../intake/intake.service.js';
 import { SourcesService } from './sources.service.js';
@@ -29,10 +30,6 @@ const REQUIRED = ['itemNumber', 'title', 'sku', 'available'] as const;
 
 type Col = keyof typeof COLUMNS;
 
-/** Fields compared to decide whether a re-imported listing changed. */
-const LISTING_COMPARED: (keyof ExternalListingsTable)[] = [
-  'sku', 'title', 'price_cents', 'available_quantity', 'sold_quantity', 'status', 'category_name', 'category_id', 'condition', 'currency',
-];
 
 /**
  * M4: imports the eBay Seller Hub "Active listings" CSV (spec 1.1, part 2a).
@@ -44,6 +41,7 @@ export class EbayCsvImportService {
     private readonly runs: ImportRunsService,
     private readonly intake: IntakeService,
     private readonly sources: SourcesService,
+    private readonly listings: ExternalListingsService,
     private readonly audit: AuditService,
     private readonly outbox: OutboxService,
   ) {}
@@ -72,7 +70,7 @@ export class EbayCsvImportService {
     const skus = body.map((r) => parseSku(get(r.row, 'sku')));
     const cars = await this.intake.byStockNumbers(trx, [...new Set(skus.filter((s) => s?.isCarNumber).map((s) => s!.prefix))]);
     const srcs = await this.sources.idsByCodes(trx, [...new Set(skus.filter((s) => s && !s.isCarNumber).map((s) => s!.prefix))]);
-    const existing = new Map((await trx.selectFrom('platform.external_listings').selectAll().where('provider', '=', 'ebay').execute()).map((l) => [l.external_id, l]));
+    const existing = await this.listings.byExternalId(trx, 'ebay');
 
     for (let n = 0; n < body.length; n++) {
       const { row, rowNumber } = body[n]!;
@@ -150,32 +148,9 @@ export class EbayCsvImportService {
       };
 
       const before = existing.get(itemNumber);
-      let listingId: string;
+      const { id: listingId, result } = await this.listings.upsert(trx, ctx, listing, before, { runId });
+      counts[`listings_${result}`]!++;
       let partId: string | null = before?.part_id ?? null;
-      let listingChanged: boolean;
-      if (!before) {
-        const created = await trx.insertInto('platform.external_listings').values({ ...listing, part_id: null }).returning('id').executeTakeFirstOrThrow();
-        listingId = created.id;
-        listingChanged = true;
-        counts.listings_created!++;
-        await this.audit.record(trx, ctx, { action: 'listing.imported', entityType: 'external_listing', entityId: listingId, after: { runId, ...listing, raw: undefined } });
-      } else {
-        listingId = before.id;
-        listingChanged = LISTING_COMPARED.some((k) => String(before[k] ?? '') !== String((listing as Record<string, unknown>)[k] ?? ''));
-        if (listingChanged) {
-          await trx.updateTable('platform.external_listings').set({ ...listing, updated_at: new Date() }).where('id', '=', listingId).execute();
-          counts.listings_updated!++;
-          await this.audit.record(trx, ctx, {
-            action: 'listing.reimported',
-            entityType: 'external_listing',
-            entityId: listingId,
-            before: Object.fromEntries(LISTING_COMPARED.map((k) => [k, before[k]])),
-            after: Object.fromEntries(LISTING_COMPARED.map((k) => [k, (listing as Record<string, unknown>)[k]])),
-          });
-        } else {
-          counts.listings_unchanged!++;
-        }
-      }
 
       // Parts on the shelf: one part row per listing, quantity = units available.
       const part = {
@@ -193,7 +168,7 @@ export class EbayCsvImportService {
       if (!partId && available > 0) {
         const created = await trx.insertInto('inventory.parts').values({ ...part, origin: 'ebay_import', part_number: null, interchange_number: null }).returning('id').executeTakeFirstOrThrow();
         partId = created.id;
-        await trx.updateTable('platform.external_listings').set({ part_id: partId }).where('id', '=', listingId).execute();
+        await this.listings.linkPart(trx, ctx, listingId, partId);
         counts.parts_created!++;
         await this.audit.record(trx, ctx, { action: 'inventory.part.imported', entityType: 'part', entityId: partId, after: { runId, listing: itemNumber, ...part } });
       } else if (partId) {

@@ -9,6 +9,20 @@ export const companyStore = {
   set: (c: string) => localStorage.setItem(COMPANY_KEY, c),
 };
 
+export interface ImportIssue {
+  rowNumber: number | null;
+  code: string;
+  message: string;
+}
+
+export interface ImportResult {
+  runId: string;
+  status: 'succeeded' | 'failed';
+  counts: Record<string, number>;
+  issues: ImportIssue[];
+  error?: string;
+}
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -47,4 +61,8 @@ export const api = {
       body: JSON.stringify({ ...(company ? { company } : {}), email, password, ...(totp ? { totp } : {}) }),
     }),
   me: () => call<PublicUser>('/auth/me'),
+  importCarSheet: (fileName: string, content: string) =>
+    call<ImportResult>('/intake/imports/car-sheet', { method: 'POST', body: JSON.stringify({ fileName, content }) }),
+  importEbayCsv: (fileName: string, content: string) =>
+    call<ImportResult>('/inventory/imports/ebay-csv', { method: 'POST', body: JSON.stringify({ fileName, content }) }),
 };
