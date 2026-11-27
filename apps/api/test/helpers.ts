@@ -17,6 +17,8 @@ export const ADMIN = { email: 'admin@test.local', password: 'admin-password-123'
 
 export async function resetDatabase(): Promise<Kysely<Database>> {
   const db = createDb(TEST_DB_URL);
+  await sql`drop schema if exists intake cascade`.execute(db);
+  await sql`drop schema if exists inventory cascade`.execute(db);
   await sql`drop schema if exists platform cascade`.execute(db);
   await sql`drop table if exists public.kysely_migration, public.kysely_migration_lock`.execute(db);
   await migrateToLatest(db);

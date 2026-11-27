@@ -148,6 +148,8 @@ describe('AC4 schema guard', () => {
 
 describe('Migration moves existing rows into the first company', () => {
   it('backfills a Phase 0 database into a "default" company', async () => {
+    await sql`drop schema if exists intake cascade`.execute(db);
+    await sql`drop schema if exists inventory cascade`.execute(db);
     await sql`drop schema if exists platform cascade`.execute(db);
     await sql`drop table if exists public.kysely_migration, public.kysely_migration_lock`.execute(db);
     await migrateTo(db, '0001_platform');

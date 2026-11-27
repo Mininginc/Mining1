@@ -17,6 +17,7 @@
     "@nestjs/jwt": "^12.0.5",
     "@nestjs/platform-express": "^12.6.3",
     "@wms/shared": "workspace:*",
+    "csv-parse": "^7.0.3",
     "helmet": "^8.3.0",
     "kysely": "^0.29.9",
     "pg": "^8.23.1",
