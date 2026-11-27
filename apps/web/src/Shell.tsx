@@ -2,12 +2,14 @@ import { modulesFor, type PublicUser } from '@wms/shared';
 import { useState } from 'react';
 import { useOnline } from './useOnline';
 import { ImportsPage } from './ImportsPage';
+import { ReviewPage } from './ReviewPage';
 
 export function Shell({ user, onSignOut }: { user: PublicUser; onSignOut: () => void }) {
   const online = useOnline();
   const modules = modulesFor(user.roles);
-  const [page, setPage] = useState<'home' | 'imports'>('home');
+  const [page, setPage] = useState<'home' | 'imports' | 'review'>('home');
   const canImport = user.roles.includes('admin') || user.roles.includes('manager');
+  const canReview = canImport || user.roles.includes('warehouse') || user.roles.includes('sales');
   return (
     <div className="shell">
       {!online && (
@@ -21,10 +23,13 @@ export function Shell({ user, onSignOut }: { user: PublicUser; onSignOut: () => 
           {user.name} · {user.roles.join(', ')}
         </span>
         {canImport && page === 'home' && <button onClick={() => setPage('imports')}>Import data</button>}
+        {canReview && page === 'home' && <button onClick={() => setPage('review')}>Review problems</button>}
         <button onClick={onSignOut}>Sign out</button>
       </header>
       {page === 'imports' ? (
         <ImportsPage onBack={() => setPage('home')} />
+      ) : page === 'review' ? (
+        <ReviewPage onBack={() => setPage('home')} canResolve={canImport} />
       ) : (
       <nav aria-label="Modules">
         <ul>

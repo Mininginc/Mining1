@@ -8,7 +8,7 @@ const LABELS: Record<Kind, { title: string; help: string }> = {
   ebay: { title: 'eBay active listings', help: 'Seller Hub > Listings > Active > Download report (CSV).' },
 };
 
-const ISSUE_NAMES: Record<string, string> = {
+export const ISSUE_NAMES: Record<string, string> = {
   duplicate_car_id: 'Car ID used twice',
   duplicate_vin: 'Same VIN on several cars',
   vin_invalid: 'VIN looks mistyped',
