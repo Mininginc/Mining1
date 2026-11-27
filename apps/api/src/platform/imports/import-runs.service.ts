@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { AuditService } from '../audit/audit.service.js';
 import type { Kysely, Transaction } from 'kysely';
 import { DB } from '../../db/db.js';
 import { withCompany } from '../../db/tenant.js';
@@ -35,7 +36,10 @@ export function headerSignature(headers: string[]): string {
  */
 @Injectable()
 export class ImportRunsService {
-  constructor(@Inject(DB) private readonly db: Kysely<Database>) {}
+  constructor(
+    @Inject(DB) private readonly db: Kysely<Database>,
+    private readonly audit: AuditService,
+  ) {}
 
   async run(
     ctx: ActorContext,
@@ -93,6 +97,59 @@ export class ImportRunsService {
 
   list(companyId: string, limit = 50) {
     return withCompany(this.db, companyId, (trx) => trx.selectFrom('platform.import_runs').selectAll().orderBy('started_at', 'desc').limit(limit).execute());
+  }
+
+  /** The review queue: open problems from every import, newest run first. */
+  openIssues(companyId: string, q: { code?: string; limit: number; offset: number }) {
+    return withCompany(this.db, companyId, (trx) => {
+      let query = trx
+        .selectFrom('platform.import_issues as i')
+        .innerJoin('platform.import_runs as r', 'r.id', 'i.run_id')
+        .select(['i.id', 'i.run_id', 'i.row_number', 'i.code', 'i.message', 'i.ref', 'i.created_at', 'r.kind', 'r.file_name', 'r.started_at'])
+        .where('i.resolved_at', 'is', null)
+        .orderBy('r.started_at', 'desc')
+        .orderBy('i.row_number')
+        .orderBy('i.id')
+        .limit(q.limit)
+        .offset(q.offset);
+      if (q.code) query = query.where('i.code', '=', q.code);
+      return query.execute();
+    });
+  }
+
+  /** Open problem counts by type, for the review screen's filter. */
+  openIssueCounts(companyId: string) {
+    return withCompany(this.db, companyId, (trx) =>
+      trx
+        .selectFrom('platform.import_issues')
+        .select(['code', (eb) => eb.fn.countAll<string>().as('count')])
+        .where('resolved_at', 'is', null)
+        .groupBy('code')
+        .orderBy('code')
+        .execute(),
+    );
+  }
+
+  async resolveIssue(ctx: ActorContext, issueId: string, note: string | undefined) {
+    return withCompany(this.db, ctx.companyId, async (trx) => {
+      const before = await trx.selectFrom('platform.import_issues').selectAll().where('id', '=', issueId).forUpdate().executeTakeFirst();
+      if (!before) throw new NotFoundException();
+      if (before.resolved_at) return before;
+      const after = await trx
+        .updateTable('platform.import_issues')
+        .set({ resolved_at: new Date(), resolved_by: ctx.actorId })
+        .where('id', '=', issueId)
+        .returningAll()
+        .executeTakeFirstOrThrow();
+      await this.audit.record(trx, ctx, {
+        action: 'import.issue_resolved',
+        entityType: 'import_issue',
+        entityId: issueId,
+        before: { resolvedAt: null },
+        after: { resolvedAt: after.resolved_at, code: before.code, ref: before.ref, note: note ?? null },
+      });
+      return after;
+    });
   }
 
   issues(companyId: string, runId: string, onlyOpen: boolean) {

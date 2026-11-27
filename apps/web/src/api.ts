@@ -23,6 +23,18 @@ export interface ImportResult {
   error?: string;
 }
 
+export interface ReviewItem {
+  id: string;
+  run_id: string;
+  row_number: number | null;
+  code: string;
+  message: string;
+  ref: string | null;
+  kind: 'car_sheet' | 'ebay_listings_csv';
+  file_name: string | null;
+  started_at: string;
+}
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -63,6 +75,10 @@ export const api = {
   me: () => call<PublicUser>('/auth/me'),
   importCarSheet: (fileName: string, content: string) =>
     call<ImportResult>('/intake/imports/car-sheet', { method: 'POST', body: JSON.stringify({ fileName, content }) }),
+  reviewCounts: () => call<{ code: string; count: string }[]>('/imports/issues/counts'),
+  reviewItems: (code?: string) => call<ReviewItem[]>(`/imports/issues${code ? `?code=${encodeURIComponent(code)}` : ''}`),
+  resolveItem: (id: string, note?: string) =>
+    call<unknown>(`/imports/issues/${id}/resolve`, { method: 'POST', body: JSON.stringify(note ? { note } : {}) }),
   importEbayCsv: (fileName: string, content: string) =>
     call<ImportResult>('/inventory/imports/ebay-csv', { method: 'POST', body: JSON.stringify({ fileName, content }) }),
 };

@@ -194,6 +194,40 @@ describe('eBay active listings CSV import (AC4a, 4b, 5)', () => {
   });
 });
 
+describe('Review queue (part 5)', () => {
+  it('lists open problems across imports, filters by type, and resolves one with an audit row', async () => {
+    const counts = (await http().get('/imports/issues/counts').set(auth(admin))).body as { code: string; count: string }[];
+    const byCode = Object.fromEntries(counts.map((c) => [c.code, Number(c.count)]));
+    expect(byCode.duplicate_car_id).toBeGreaterThanOrEqual(1);
+    expect(byCode.car_mismatch).toBeGreaterThanOrEqual(1);
+
+    const all = (await http().get('/imports/issues').set(auth(admin))).body as { id: string; code: string; kind: string }[];
+    expect(all.length).toBe(Object.values(byCode).reduce((a, b) => a + b, 0));
+    const dups = (await http().get('/imports/issues').query({ code: 'duplicate_car_id' }).set(auth(admin))).body as { id: string; code: string; kind: string }[];
+    expect(dups.every((i) => i.code === 'duplicate_car_id' && i.kind === 'car_sheet')).toBe(true);
+
+    const target = dups[0]!;
+    const res = await http().post(`/imports/issues/${target.id}/resolve`).set(auth(admin)).send({ note: 'Second row was a typo; car 9001 is correct' });
+    expect(res.status).toBe(200);
+    expect(res.body.resolved_at).toEqual(expect.any(String));
+    const after = (await http().get('/imports/issues').query({ code: 'duplicate_car_id' }).set(auth(admin))).body as { id: string }[];
+    expect(after.map((i) => i.id)).not.toContain(target.id);
+
+    const audit = await db.selectFrom('platform.audit_log').selectAll().where('action', '=', 'import.issue_resolved').executeTakeFirstOrThrow();
+    expect(audit.entity_id).toBe(target.id);
+    expect(audit.after).toMatchObject({ note: 'Second row was a typo; car 9001 is correct', code: 'duplicate_car_id' });
+
+    // Resolving twice is harmless and does not add a second audit row.
+    expect((await http().post(`/imports/issues/${target.id}/resolve`).set(auth(admin)).send({})).status).toBe(200);
+    expect(await db.selectFrom('platform.audit_log').select('id').where('action', '=', 'import.issue_resolved').execute()).toHaveLength(1);
+  });
+
+  it('rejects bad and unknown issue ids', async () => {
+    expect((await http().post('/imports/issues/abc/resolve').set(auth(admin)).send({})).status).toBe(400);
+    expect((await http().post('/imports/issues/999999999/resolve').set(auth(admin)).send({})).status).toBe(404);
+  });
+});
+
 describe('AC8 roles', () => {
   it('only admin and manager run imports; warehouse and sales can read the review queue', async () => {
     const sales = await tokenFor('sales');
@@ -207,5 +241,8 @@ describe('AC8 roles', () => {
     expect((await http().get('/imports').set(auth(warehouse))).status).toBe(200);
     expect((await http().get('/imports').set(auth(yard))).status).toBe(403);
     expect((await http().get('/vehicles').set(auth(yard))).status).toBe(200);
+    expect((await http().get('/imports/issues').set(auth(sales))).status).toBe(200);
+    const open = (await http().get('/imports/issues').set(auth(admin))).body as { id: string }[];
+    expect((await http().post(`/imports/issues/${open[0]!.id}/resolve`).set(auth(sales)).send({})).status).toBe(403);
   });
 });
