@@ -1,0 +1,25 @@
+# Dismantler Operations Platform
+
+One system for an auto dismantler's whole business. Read `docs/architecture.md`, `docs/roadmap.md` and the ADRs in `docs/adr/` before changing structure.
+
+## Team process (subagents in `.claude/agents/`)
+architect -> coder -> design-verifier -> tester -> merge. No code without an approved spec in `docs/specs/`. Specs that change scope or cost need Andrei's approval.
+
+## Rules
+- TypeScript strict, ESM (`"type": "module"`, relative imports end in `.js`). pnpm workspaces: `apps/api` (NestJS + Kysely), `apps/web` (React + Vite PWA), `packages/shared`.
+- One PostgreSQL schema per module; never touch another module's schema. Cross-module: public service or `platform.outbox` event in the same transaction.
+- Every write goes through a transaction that also calls `AuditService.record`. Never put passwords, hashes or MFA secrets in audit rows or responses.
+- Every route needs sign-in unless `@Public()`; restrict with `@Roles(...)`.
+- Outside services only through integration adapters in M1.
+- Never skip or weaken a test to get green.
+
+## Commands
+```bash
+pnpm install
+pnpm build          # shared first, then api and web
+pnpm test           # API tests need PostgreSQL; TEST_DATABASE_URL defaults to postgres://wms:wms@localhost:5432/wms_test
+pnpm db:migrate     # uses DATABASE_URL
+pnpm db:seed        # ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_NAME
+pnpm dev:api        # needs JWT_SECRET (32+ chars)
+pnpm dev:web        # http://localhost:5173, proxies /api to :3000
+```
